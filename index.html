@@ -109,6 +109,38 @@ button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid v
 .gate-card input{font:inherit;text-align:center;font-size:22px;letter-spacing:.3em;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);color:var(--ink);width:100%}
 .gate-card .btn{width:100%;padding:12px}
 body.locked{overflow:hidden}
+/* leftovers */
+.lolist{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.locard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);display:flex;align-items:stretch;min-width:0;overflow:hidden}
+.locard.soon{border-color:var(--mustard)}
+.locard.old{border-color:var(--danger)}
+.lo-main{flex:1;min-width:0;border:0;background:none;text-align:left;padding:12px 14px;display:flex;flex-direction:column;gap:5px}
+.lo-name{font-size:16px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.lo-meta{font-size:13px;color:var(--muted);display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.lo-ate{border:0;border-left:1px solid var(--line);background:none;min-width:76px;padding:0 12px;font-weight:600;font-size:13px;color:var(--basil);line-height:1.2}
+.lo-ate:hover,.lo-main:hover{background:var(--bg)}
+.chip.soon{background:var(--mustard-soft);color:var(--ink)}
+.chip.old{background:var(--danger);color:var(--card)}
+.lo-empty{border:1px dashed var(--line);border-radius:var(--r);padding:16px;color:var(--muted);font-size:14px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:7px 13px;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--basil);border-color:var(--basil);color:var(--card);font-weight:600}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick-row{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:10px 12px;text-align:left;display:flex;flex-direction:column;gap:2px;width:100%}
+.pick-row:hover{border-color:var(--faint)}
+.pick-row .when{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.pick-row .what{font-weight:600}
+.pick-row .rest{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.comp{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:8px 10px 8px 12px;background:var(--bg)}
+.comp.on{border-color:var(--basil);background:var(--basil-soft)}
+.comp .tog{flex:1;min-width:0;border:0;background:none;text-align:left;display:flex;align-items:center;gap:10px;padding:4px 0;font-size:15px;overflow-wrap:anywhere}
+.box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--faint);flex:none;display:grid;place-items:center;font-size:13px;line-height:1;color:var(--card)}
+.comp.on .box{background:var(--basil);border-color:var(--basil)}
+.step{display:flex;align-items:center;gap:4px;flex:none}
+.step button{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--card);font-size:18px;line-height:1;display:grid;place-items:center}
+.step output{min-width:28px;text-align:center;font-weight:600;font-variant-numeric:tabular-nums}
+.steprow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.steprow span{font-size:13px;font-weight:600;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -129,6 +161,14 @@ body.locked{overflow:hidden}
 
   <div class="banner" id="banner" hidden></div>
 
+  <section aria-labelledby="loH">
+    <div class="sechead">
+      <h2 id="loH">Leftovers in the fridge</h2>
+      <button class="btn primary" id="addLo">+ Add leftovers</button>
+    </div>
+    <div class="lolist" id="lo"></div>
+  </section>
+
   <section aria-labelledby="dinH">
     <div class="sechead">
       <h2 id="dinH">Dinners</h2>
@@ -147,7 +187,7 @@ body.locked{overflow:hidden}
 </div>
 
 <datalist id="dl-main"></datalist><datalist id="dl-side"></datalist><datalist id="dl-bread"></datalist>
-<datalist id="dl-bfast"></datalist><datalist id="dl-lunch"></datalist>
+<datalist id="dl-bfast"></datalist><datalist id="dl-lunch"></datalist><datalist id="dl-lo"></datalist>
 <div id="modal"></div>
 <div class="toast" id="toast" hidden></div>
 
@@ -323,10 +363,10 @@ body.locked{overflow:hidden}
 const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const COOKS=["Robert","Erica","Mel","Eating out"];
 const DEFAULT_COOK={1:"Mel"};
-const SUGG_KEYS=["main","side","bread","bfast","lunch"];
+const SUGG_KEYS=["main","side","bread","bfast","lunch","lo"];
 let db=null, canWrite=true, unsubs=[];
 let wk=sundayOf(new Date());
-let days={}, prep={}, sugg={main:[],side:[],bread:[],bfast:[],lunch:[]};
+let days={}, prep={}, sugg={main:[],side:[],bread:[],bfast:[],lunch:[],lo:[]};
 let suggWrite=Promise.resolve();
 
 function sundayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-x.getDay());return x}
@@ -385,18 +425,22 @@ function prepCard(id,title,main,rows){
   return h+`</button>`;
 }
 function renderLists(){
-  const map={main:"dl-main",side:"dl-side",bread:"dl-bread",bfast:"dl-bfast",lunch:"dl-lunch"};
-  for(const k of SUGG_KEYS) $(map[k]).innerHTML=(sugg[k]||[]).map(v=>`<option value="${esc(v)}"></option>`).join("");
+  const map={main:"dl-main",side:"dl-side",bread:"dl-bread",bfast:"dl-bfast",lunch:"dl-lunch",lo:"dl-lo"};
+  for(const k of SUGG_KEYS){
+    let list=sugg[k]||[];
+    if(k==="lo"){const seen=new Set();list=[...list,...(sugg.lunch||[]),...(sugg.bfast||[])].filter(v=>{const l=v.toLowerCase();if(seen.has(l))return false;seen.add(l);return true})}
+    $(map[k]).innerHTML=list.map(v=>`<option value="${esc(v)}"></option>`).join("");
+  }
 }
 
 /* ---------- editor sheet ---------- */
 let lastFocus=null;
-function openSheet(html,onReady){
+function openSheet(html,onReady,noFocus){
   lastFocus=document.activeElement;
   $("modal").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
   $("scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
   onReady&&onReady();
-  const f=$("modal").querySelector("input");f&&f.focus();
+  const f=noFocus?$("modal").querySelector("button"):$("modal").querySelector("input");f&&f.focus();
 }
 function closeSheet(){$("modal").innerHTML="";lastFocus&&lastFocus.focus&&lastFocus.focus()}
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("modal").innerHTML)closeSheet()});
@@ -528,6 +572,158 @@ function subscribeWeek(){
 }
 function onErr(){}
 
+/* ---------- leftovers ---------- */
+let lo={};                 // id -> {name, portions, stored:"YYYY-MM-DD", from:"YYYY-MM-DD" (dinner it came from), added}
+const SOON=3, OLD=4;       // days in the fridge before "Eat soon" / "Toss?"
+function fromKey(k){const [y,m,d]=String(k).split("-").map(Number);return new Date(y,(m||1)-1,d||1)}
+function ageDays(k){return Math.round((fromKey(key(new Date()))-fromKey(k))/864e5)}
+function ageTxt(n){return n<=0?"Put away today":n===1?"1 day old":n+" days old"}
+function portTxt(p){return p===1?"1 portion":p+" portions"}
+function whenTxt(d){const n=ageDays(key(d));return (n===0?"Tonight":n===1?"Last night":DAYS[d.getDay()])+" · "+md(d)}
+
+function renderLo(){
+  const items=Object.entries(lo).map(([id,v])=>({id,...v})).filter(v=>v.name)
+    .sort((a,b)=>String(a.stored).localeCompare(String(b.stored))||String(a.name).localeCompare(String(b.name)));
+  if(!items.length){$("lo").innerHTML=`<div class="lo-empty">Nothing in the fridge right now. When food goes into containers, tap <b>Add leftovers</b>.</div>`;return}
+  $("lo").innerHTML=items.map(v=>{
+    const n=ageDays(v.stored||key(new Date())), cls=n>=OLD?"old":n>=SOON?"soon":"", p=+v.portions||1;
+    const chip=cls==="old"?`<span class="chip old">Toss?</span>`:cls==="soon"?`<span class="chip soon">Eat soon</span>`:"";
+    return `<div class="locard ${cls}">
+      <button class="lo-main" data-lo="${esc(v.id)}" aria-label="${esc(v.name)}, ${portTxt(p)}, ${ageTxt(n)}. Edit">
+        <span class="lo-name">${esc(v.name)}</span>
+        <span class="lo-meta">${portTxt(p)} · ${ageTxt(n)} ${chip}</span>
+      </button>
+      <button class="lo-ate" data-ate="${esc(v.id)}" aria-label="Ate one portion of ${esc(v.name)}">Ate 1</button>
+    </div>`}).join("");
+}
+
+function stepper(id,val,label){return `<div class="step"><button type="button" data-d="-1" aria-label="One fewer ${label}">−</button><output id="${id}" aria-live="polite">${val}</output><button type="button" data-d="1" aria-label="One more ${label}">+</button></div>`}
+function wireSteppers(root){root.querySelectorAll(".step").forEach(s=>s.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;const o=s.querySelector("output");o.textContent=Math.max(1,Math.min(30,(+o.textContent||1)+(+b.dataset.d)))}))}
+const stepVal=id=>Math.max(1,+$(id).textContent||1);
+function showErr(t){const er=$("err");er.textContent=t;er.hidden=false}
+
+function ateOne(id){
+  const v=lo[id]; if(!v||!db) return;
+  const p=(+v.portions||1)-1;
+  if(p<=0){delete lo[id];renderLo();db.doc(`leftovers/${id}`).delete();toast(`${v.name}: all gone`)}
+  else{lo[id]={...v,portions:p};renderLo();db.doc(`leftovers/${id}`).update({portions:p});toast(`${v.name}: ${portTxt(p)} left`)}
+}
+
+async function recentDinners(){
+  const today=fromKey(key(new Date())), start=addDays(today,-6), out=[];
+  for(const wkKey of [...new Set([key(sundayOf(start)),key(sundayOf(today))])]){
+    const s=await db.collection(`weeks/${wkKey}/days`).get();
+    s.docs.forEach(d=>{
+      const date=addDays(fromKey(wkKey),+d.id), v=d.data()||{};
+      if(date<start||date>today) return;
+      const parts=[v.main,v.side1,v.side2,v.side3,v.bread].map(clean).filter(Boolean);
+      if(parts.length) out.push({date,k:key(date),parts});
+    });
+  }
+  return out.sort((a,b)=>b.date-a.date);
+}
+
+let loMode="plan";
+async function addLo(){
+  if(!db) return;
+  const dinners=await recentDinners();
+  const logged=new Set(Object.values(lo).map(v=>v.from).filter(Boolean));
+  if(!dinners.length) loMode="other";
+  openSheet(`<div><h2>Add leftovers</h2><div class="sub">What went into containers?</div></div>
+    <div class="seg" id="loSeg"><button type="button" data-m="plan" aria-pressed="${loMode==="plan"}">From the dinner plan</button><button type="button" data-m="other" aria-pressed="${loMode==="other"}">Something else</button></div>
+    <div id="loBody" style="display:flex;flex-direction:column;gap:14px"></div>`,()=>{
+      const draw=()=>loMode==="plan"?drawPlanList(dinners,logged):drawOther();
+      $("loSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;loMode=b.dataset.m;
+        $("loSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.m===loMode));draw()});
+      draw();
+    });
+}
+
+function drawPlanList(dinners,logged){
+  const body=$("loBody");
+  if(!dinners.length){body.innerHTML=`<p class="sub" style="margin:0">No dinners on the plan for the past week. Use <b>Something else</b> instead.</p>
+    <div class="actions"><div class="r"><button class="btn" id="cancel">Cancel</button></div></div>`;$("cancel").onclick=closeSheet;return}
+  body.innerHTML=`<div class="pick" id="pick">${dinners.map((d,i)=>{
+    const [first,...rest]=d.parts;
+    return `<button type="button" class="pick-row" data-i="${i}">
+      <span class="when">${whenTxt(d.date)}${logged.has(d.k)?` <span class="chip">Added</span>`:""}</span>
+      <span class="what">${esc(first)}</span>${rest.length?`<span class="rest">+ ${rest.map(esc).join(", ")}</span>`:""}
+    </button>`}).join("")}</div>
+    <div class="actions"><div class="r"><button class="btn" id="cancel">Cancel</button></div></div>`;
+  $("cancel").onclick=closeSheet;
+  $("pick").addEventListener("click",e=>{const b=e.target.closest("[data-i]");if(b)drawParts(dinners[+b.dataset.i],dinners,logged)});
+}
+
+function drawParts(d,dinners,logged){
+  const body=$("loBody"), on=new Set([0]);   // the main is ticked to start
+  body.innerHTML=`<div class="sub">${whenTxt(d.date)}. Tick what got saved and about how many portions of each.</div>
+    <div class="pick" id="comps">${d.parts.map((p,i)=>`<div class="comp" data-i="${i}">
+      <button type="button" class="tog"><span class="box" aria-hidden="true"></span><span>${esc(p)}</span></button>
+      ${stepper("cp"+i,2,"portion of "+esc(p))}</div>`).join("")}</div>
+    <div class="err" id="err" hidden></div>
+    <div class="actions"><button class="btn ghost" id="back">‹ Back</button><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`;
+  wireSteppers(body);
+  const sync=()=>body.querySelectorAll(".comp").forEach(c=>{const o=on.has(+c.dataset.i);c.classList.toggle("on",o);
+    c.querySelector(".tog").setAttribute("aria-pressed",o);c.querySelector(".box").textContent=o?"✓":"";c.querySelector(".step").style.visibility=o?"visible":"hidden"});
+  sync();
+  $("comps").addEventListener("click",e=>{const t=e.target.closest(".tog");if(!t)return;const i=+t.closest(".comp").dataset.i;on.has(i)?on.delete(i):on.add(i);sync()});
+  $("back").onclick=()=>drawPlanList(dinners,logged);
+  $("cancel").onclick=closeSheet;
+  $("save").onclick=()=>{
+    if(!on.size) return showErr("Tick at least one thing that got saved.");
+    saveNewLo([...on].sort((a,b)=>a-b).map(i=>({name:d.parts[i],portions:stepVal("cp"+i),stored:d.k,from:d.k})));
+  };
+}
+
+function drawOther(){
+  const body=$("loBody"); let when=0;
+  body.innerHTML=`${field("lo-name","What is it",'',"dl-lo","Pancakes, Saturday lunch chili…")}
+    <div class="steprow"><span>About how many portions</span>${stepper("lo-p",2,"portion")}</div>
+    <div class="field"><label>Put away</label><div class="seg" id="loWhen">${["Today","Yesterday","2 days ago"].map((t,i)=>`<button type="button" data-w="${i}" aria-pressed="${i===0}">${t}</button>`).join("")}</div></div>
+    <div class="err" id="err" hidden></div>
+    <div class="actions"><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`;
+  wireSteppers(body);
+  $("loWhen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;when=+b.dataset.w;
+    $("loWhen").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",+x.dataset.w===when))});
+  $("cancel").onclick=closeSheet;
+  $("save").onclick=()=>{
+    const name=clean($("lo-name").value);
+    if(!name){showErr("Give it a name so everyone knows what's in the container.");$("lo-name").focus();return}
+    saveNewLo([{name,portions:stepVal("lo-p"),stored:key(addDays(new Date(),-when))}]);
+  };
+  $("lo-name").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}});
+  setTimeout(()=>$("lo-name")&&$("lo-name").focus(),30);
+}
+
+function saveNewLo(items){
+  closeSheet(); if(!db) return;
+  const now=Date.now();
+  items.forEach(v=>{const r=db.collection("leftovers").doc();const doc={...v,added:now};lo[r.id]=doc;r.set(doc)});
+  renderLo();
+  toast(items.length===1?`Added ${items[0].name}`:`Added ${items.length} leftovers`);
+  const other=items.filter(v=>!v.from).map(v=>v.name); if(other.length) learn({lo:other});
+}
+
+function editLo(id){
+  const v=lo[id]; if(!v) return;
+  const n=ageDays(v.stored);
+  openSheet(`<div><h2>${esc(v.name)}</h2><div class="sub">${n<=0?"Put away today":`Put away ${n===1?"yesterday":DAYS[fromKey(v.stored).getDay()]+", "+md(fromKey(v.stored))} · ${n===1?"1 day":n+" days"} old`}</div></div>
+    ${field("e-name","Name",v.name,"dl-lo","")}
+    <div class="steprow"><span>Portions left</span>${stepper("e-p",+v.portions||1,"portion")}</div>
+    <div class="actions"><button class="btn ghost danger" id="gone">All gone / tossed</button><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`,()=>{
+      wireSteppers($("modal"));
+      $("cancel").onclick=closeSheet;
+      $("gone").onclick=()=>{closeSheet();delete lo[id];renderLo();if(db)db.doc(`leftovers/${id}`).delete();toast(`${v.name} cleared`)};
+      $("save").onclick=()=>{const name=clean($("e-name").value)||v.name, portions=stepVal("e-p");
+        closeSheet();lo[id]={...v,name,portions};renderLo();if(db)db.doc(`leftovers/${id}`).update({name,portions});toast("Saved")};
+      $("e-name").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}});
+    },true);
+}
+
+$("addLo").onclick=addLo;
+$("lo").addEventListener("click",e=>{const a=e.target.closest("[data-ate]");if(a)return ateOne(a.dataset.ate);const c=e.target.closest("[data-lo]");if(c)editLo(c.dataset.lo)});
+setInterval(renderLo,60000);
+
 $("prev").onclick=()=>{wk=addDays(wk,-7);subscribeWeek()};
 $("next").onclick=()=>{wk=addDays(wk,7);subscribeWeek()};
 $("thisWk").onclick=()=>{wk=sundayOf(new Date());subscribeWeek()};
@@ -535,13 +731,14 @@ $("copyBtn").onclick=copyLast;
 $("days").addEventListener("click",e=>{const c=e.target.closest("[data-day]");if(c&&canWrite)editDay(+c.dataset.day)});
 $("prep").addEventListener("click",e=>{const c=e.target.closest("[data-prep]");if(c&&canWrite)editPrep(c.dataset.prep)});
 
-render();
+render();renderLo();
 setInterval(()=>{const n=window.SDP?SDP.pending():0;if(db)setStatus(!n&&!SDP.syncErr(),n?"Saving…":SDP.syncErr()?"Offline. Changes will save when you reconnect":"Synced with the family")},1500);
 $("lockBtn").onclick=()=>SDP.lock();
 (async()=>{
   db=await window.claude.use("db");
   setStatus(true,"Synced with the family");
   db.doc("meta/suggestions").onSnapshot(s=>{if(s.exists){const d=s.data();sugg={};SUGG_KEYS.forEach(k=>sugg[k]=Array.isArray(d[k])?d[k]:[]);renderLists()}});
+  db.collection("leftovers").onSnapshot(s=>{lo={};s.docs.forEach(d=>lo[d.id]=d.data());renderLo()});
   subscribeWeek();
 })();
 </script>
