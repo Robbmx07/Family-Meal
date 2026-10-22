@@ -369,6 +369,9 @@ let wk=sundayOf(new Date());
 let days={}, prep={}, sugg={main:[],side:[],bread:[],bfast:[],lunch:[],lo:[]};
 let suggWrite=Promise.resolve();
 
+/* Sunday is saved as "sun": Google Sheets turns a plain "0" into a number and the row gets skipped */
+function dayId(i){return i===0?"sun":String(i)}
+function dayIdx(id){id=String(id);return id==="sun"?0:/^[1-6]$/.test(id)?+id:-1}
 function sundayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-x.getDay());return x}
 function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
 function key(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
@@ -483,7 +486,7 @@ async function saveDay(i,v,clear){
   render(); closeSheet();
   if(!db) return;
   try{
-    const ref=db.doc(`weeks/${key(wk)}/days/${i}`);
+    const ref=db.doc(`weeks/${key(wk)}/days/${dayId(i)}`);
     if(empty) await ref.delete(); else await ref.set(v);
     toast(empty?"Night cleared":"Saved");
     if(!empty) learn({main:[v.main],side:[v.side1,v.side2,v.side3],bread:[v.bread]});
@@ -550,7 +553,7 @@ function copyLast(){
           const pk=key(addDays(wk,-7)), ck=key(wk);
           const [pd,pp]=await Promise.all([db.collection(`weeks/${pk}/days`).get(),db.collection(`weeks/${pk}/prep`).get()]);
           let n=0;
-          for(const s of pd.docs){ if(!days[s.id]){await db.doc(`weeks/${ck}/days/${s.id}`).set({...s.data()});n++} }
+          for(const s of pd.docs){ const i=dayIdx(s.id); if(i<0||days[i])continue; await db.doc(`weeks/${ck}/days/${dayId(i)}`).set({...s.data()});n++ }
           for(const s of pp.docs){ if(!prep[s.id]){await db.doc(`weeks/${ck}/prep/${s.id}`).set({...s.data()});n++} }
           toast(n?`Copied ${n} item${n>1?"s":""}`:"Nothing to copy");
         }catch(e){fail(e)}
@@ -567,7 +570,7 @@ function subscribeWeek(){
   unsubs.forEach(u=>u()); unsubs=[]; days={}; prep={}; render();
   if(!db) return;
   const k=key(wk);
-  unsubs.push(db.collection(`weeks/${k}/days`).onSnapshot(s=>{days={};s.docs.forEach(d=>days[d.id]=d.data());render()},onErr));
+  unsubs.push(db.collection(`weeks/${k}/days`).onSnapshot(s=>{days={};s.docs.forEach(d=>{const i=dayIdx(d.id);if(i>=0)days[i]=d.data()});render()},onErr));
   unsubs.push(db.collection(`weeks/${k}/prep`).onSnapshot(s=>{prep={};s.docs.forEach(d=>prep[d.id]=d.data());render()},onErr));
 }
 function onErr(){}
