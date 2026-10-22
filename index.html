@@ -155,7 +155,7 @@ body.locked{overflow:hidden}
 /* Sutton Dinner Plan, phone edition: keeps the plan in the family Google Sheet.
    Gives the app the same small db interface it uses inside Claude. */
 (function () {
-  const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+  const API_URL = 'https://script.google.com/macros/s/AKfycbx_xbFv9C6K_pvVLIBI0wRAIH0k4y5gpvVhX9FbWPz-x-yQ6J3tPCe4_xjlbxk-cb4m/exec';
   const LS = { pass: 'sdp-pass', outbox: 'sdp-outbox', cache: 'sdp-cache' };
   const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   const put = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
