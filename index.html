@@ -573,9 +573,24 @@ function subscribeWeek(){
 function onErr(){}
 
 /* ---------- leftovers ---------- */
-let lo={};                 // id -> {name, portions, stored:"YYYY-MM-DD", from:"YYYY-MM-DD" (dinner it came from), added}
-const SOON=3, OLD=4;       // days in the fridge before "Eat soon" / "Toss?"
+let lo={};                 // id -> {name, portions, stored:"YYYY-MM-DD", goodDays, from:"YYYY-MM-DD" (dinner it came from), added}
 function fromKey(k){const [y,m,d]=String(k).split("-").map(Number);return new Date(y,(m||1)-1,d||1)}
+/* Good-through dates: USDA says 3-4 days for most cooked leftovers, so the default is the short end (3).
+   A few foods with shorter guidance get 2. Nothing is ever suggested longer than 3; 4 is a manual choice only. */
+const SHORT_RE=/gravy|broth|\bstock\b|seafood|fish|shrimp|salmon|tilapia|\bcod\b|crab|lobster|scallop|\bclams?\b|mussel|oyster|sushi/i;
+function suggestDays(name){return SHORT_RE.test(name||"")?2:3}
+function goodDays(v){const g=+v.goodDays;return g>=1&&g<=4?g:suggestDays(v.name)}
+function goodThrough(v,days){return addDays(fromKey(v.stored||key(new Date())),days||goodDays(v))}
+function daysLeft(v){return Math.round((goodThrough(v)-fromKey(key(new Date())))/864e5)}
+function dayName(d){const n=Math.round((d-fromKey(key(new Date())))/864e5);return n===0?"today":n===1?"tomorrow":n===-1?"yesterday":n>1&&n<7?DAYS[d.getDay()]:md(d)}
+function goodTxt(v){return (daysLeft(v)<0?"was good through ":"good through ")+dayName(goodThrough(v))}
+const GOOD_NOTE=`<p class="sub" style="margin:0">Good-through dates follow the USDA's 3–4 day guide for leftovers, on the short side. When in doubt, throw it out.</p>`;
+function goodSeg(id,sel,withSuggested){
+  const opts=(withSuggested?[["s","Suggested"]]:[]).concat([1,2,3,4].map(n=>[String(n),n===1?"1 day":n+" days"]));
+  return `<div class="field"><label>Good for</label><div class="seg" id="${id}">${opts.map(o=>`<button type="button" data-g="${o[0]}" aria-pressed="${o[0]===String(sel)}">${o[1]}</button>`).join("")}</div></div>`}
+function wireSeg(id,onPick){$(id).addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  $(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));onPick(b.dataset.g)})}
+function pickSeg(id,val){$(id).querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.g===String(val)))}
 function ageDays(k){return Math.round((fromKey(key(new Date()))-fromKey(k))/864e5)}
 function ageTxt(n){return n<=0?"Put away today":n===1?"1 day old":n+" days old"}
 function portTxt(p){return p===1?"1 portion":p+" portions"}
@@ -583,15 +598,15 @@ function whenTxt(d){const n=ageDays(key(d));return (n===0?"Tonight":n===1?"Last 
 
 function renderLo(){
   const items=Object.entries(lo).map(([id,v])=>({id,...v})).filter(v=>v.name)
-    .sort((a,b)=>String(a.stored).localeCompare(String(b.stored))||String(a.name).localeCompare(String(b.name)));
+    .sort((a,b)=>goodThrough(a)-goodThrough(b)||String(a.name).localeCompare(String(b.name)));
   if(!items.length){$("lo").innerHTML=`<div class="lo-empty">Nothing in the fridge right now. When food goes into containers, tap <b>Add leftovers</b>.</div>`;return}
   $("lo").innerHTML=items.map(v=>{
-    const n=ageDays(v.stored||key(new Date())), cls=n>=OLD?"old":n>=SOON?"soon":"", p=+v.portions||1;
-    const chip=cls==="old"?`<span class="chip old">Toss?</span>`:cls==="soon"?`<span class="chip soon">Eat soon</span>`:"";
+    const left=daysLeft(v), cls=left<0?"old":left===0?"soon":"", p=+v.portions||1;
+    const chip=cls==="old"?`<span class="chip old">Toss?</span>`:cls==="soon"?`<span class="chip soon">Eat today</span>`:"";
     return `<div class="locard ${cls}">
-      <button class="lo-main" data-lo="${esc(v.id)}" aria-label="${esc(v.name)}, ${portTxt(p)}, ${ageTxt(n)}. Edit">
+      <button class="lo-main" data-lo="${esc(v.id)}" aria-label="${esc(v.name)}, ${portTxt(p)}, ${goodTxt(v)}. Edit">
         <span class="lo-name">${esc(v.name)}</span>
-        <span class="lo-meta">${portTxt(p)} · ${ageTxt(n)} ${chip}</span>
+        <span class="lo-meta">${portTxt(p)} · ${goodTxt(v)} ${chip}</span>
       </button>
       <button class="lo-ate" data-ate="${esc(v.id)}" aria-label="Ate one portion of ${esc(v.name)}">Ate 1</button>
     </div>`}).join("");
@@ -631,7 +646,7 @@ async function addLo(){
   if(!dinners.length) loMode="other";
   openSheet(`<div><h2>Add leftovers</h2><div class="sub">What went into containers?</div></div>
     <div class="seg" id="loSeg"><button type="button" data-m="plan" aria-pressed="${loMode==="plan"}">From the dinner plan</button><button type="button" data-m="other" aria-pressed="${loMode==="other"}">Something else</button></div>
-    <div id="loBody" style="display:flex;flex-direction:column;gap:14px"></div>`,()=>{
+    <div id="loBody" style="display:flex;flex-direction:column;gap:14px"></div>${GOOD_NOTE}`,()=>{
       const draw=()=>loMode==="plan"?drawPlanList(dinners,logged):drawOther();
       $("loSeg").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;loMode=b.dataset.m;
         $("loSeg").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.m===loMode));draw()});
@@ -656,40 +671,48 @@ function drawPlanList(dinners,logged){
 
 function drawParts(d,dinners,logged){
   const body=$("loBody"), on=new Set([0]);   // the main is ticked to start
+  let good="s";
+  const daysFor=p=>good==="s"?suggestDays(p):+good;
   body.innerHTML=`<div class="sub">${whenTxt(d.date)}. Tick what got saved and about how many portions of each.</div>
     <div class="pick" id="comps">${d.parts.map((p,i)=>`<div class="comp" data-i="${i}">
-      <button type="button" class="tog"><span class="box" aria-hidden="true"></span><span>${esc(p)}</span></button>
+      <button type="button" class="tog"><span class="box" aria-hidden="true"></span><span>${esc(p)}<small class="gl" style="display:block;font-size:12px;color:var(--muted)"></small></span></button>
       ${stepper("cp"+i,2,"portion of "+esc(p))}</div>`).join("")}</div>
+    ${goodSeg("cgood","s",true)}
     <div class="err" id="err" hidden></div>
     <div class="actions"><button class="btn ghost" id="back">‹ Back</button><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`;
   wireSteppers(body);
   const sync=()=>body.querySelectorAll(".comp").forEach(c=>{const o=on.has(+c.dataset.i);c.classList.toggle("on",o);
-    c.querySelector(".tog").setAttribute("aria-pressed",o);c.querySelector(".box").textContent=o?"✓":"";c.querySelector(".step").style.visibility=o?"visible":"hidden"});
+    c.querySelector(".tog").setAttribute("aria-pressed",o);c.querySelector(".box").textContent=o?"✓":"";c.querySelector(".step").style.visibility=o?"visible":"hidden";
+    c.querySelector(".gl").textContent="Good through "+dayName(goodThrough({stored:d.k},daysFor(d.parts[+c.dataset.i])))});
   sync();
+  wireSeg("cgood",g=>{good=g;sync()});
   $("comps").addEventListener("click",e=>{const t=e.target.closest(".tog");if(!t)return;const i=+t.closest(".comp").dataset.i;on.has(i)?on.delete(i):on.add(i);sync()});
   $("back").onclick=()=>drawPlanList(dinners,logged);
   $("cancel").onclick=closeSheet;
   $("save").onclick=()=>{
     if(!on.size) return showErr("Tick at least one thing that got saved.");
-    saveNewLo([...on].sort((a,b)=>a-b).map(i=>({name:d.parts[i],portions:stepVal("cp"+i),stored:d.k,from:d.k})));
+    saveNewLo([...on].sort((a,b)=>a-b).map(i=>({name:d.parts[i],portions:stepVal("cp"+i),stored:d.k,from:d.k,goodDays:daysFor(d.parts[i])})));
   };
 }
 
 function drawOther(){
-  const body=$("loBody"); let when=0;
+  const body=$("loBody"); let when=0, good=3, picked=false;
   body.innerHTML=`${field("lo-name","What is it",'',"dl-lo","Pancakes, Saturday lunch chili…")}
     <div class="steprow"><span>About how many portions</span>${stepper("lo-p",2,"portion")}</div>
     <div class="field"><label>Put away</label><div class="seg" id="loWhen">${["Today","Yesterday","2 days ago"].map((t,i)=>`<button type="button" data-w="${i}" aria-pressed="${i===0}">${t}</button>`).join("")}</div></div>
+    ${goodSeg("ogood",3,false)}
     <div class="err" id="err" hidden></div>
     <div class="actions"><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`;
   wireSteppers(body);
   $("loWhen").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;when=+b.dataset.w;
     $("loWhen").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",+x.dataset.w===when))});
+  wireSeg("ogood",g=>{good=+g;picked=true});
+  $("lo-name").addEventListener("input",()=>{if(!picked){good=suggestDays($("lo-name").value);pickSeg("ogood",good)}});
   $("cancel").onclick=closeSheet;
   $("save").onclick=()=>{
     const name=clean($("lo-name").value);
     if(!name){showErr("Give it a name so everyone knows what's in the container.");$("lo-name").focus();return}
-    saveNewLo([{name,portions:stepVal("lo-p"),stored:key(addDays(new Date(),-when))}]);
+    saveNewLo([{name,portions:stepVal("lo-p"),stored:key(addDays(new Date(),-when)),goodDays:good}]);
   };
   $("lo-name").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}});
   setTimeout(()=>$("lo-name")&&$("lo-name").focus(),30);
@@ -707,15 +730,17 @@ function saveNewLo(items){
 function editLo(id){
   const v=lo[id]; if(!v) return;
   const n=ageDays(v.stored);
-  openSheet(`<div><h2>${esc(v.name)}</h2><div class="sub">${n<=0?"Put away today":`Put away ${n===1?"yesterday":DAYS[fromKey(v.stored).getDay()]+", "+md(fromKey(v.stored))} · ${n===1?"1 day":n+" days"} old`}</div></div>
+  openSheet(`<div><h2>${esc(v.name)}</h2><div class="sub">${n<=0?"Put away today":`Put away ${n===1?"yesterday":DAYS[fromKey(v.stored).getDay()]+", "+md(fromKey(v.stored))} · ${n===1?"1 day":n+" days"} old`} · ${goodTxt(v)}</div></div>
     ${field("e-name","Name",v.name,"dl-lo","")}
     <div class="steprow"><span>Portions left</span>${stepper("e-p",+v.portions||1,"portion")}</div>
+    ${goodSeg("egood",goodDays(v),false)}
     <div class="actions"><button class="btn ghost danger" id="gone">All gone / tossed</button><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div></div>`,()=>{
       wireSteppers($("modal"));
+      let good=goodDays(v); wireSeg("egood",g=>{good=+g});
       $("cancel").onclick=closeSheet;
       $("gone").onclick=()=>{closeSheet();delete lo[id];renderLo();if(db)db.doc(`leftovers/${id}`).delete();toast(`${v.name} cleared`)};
       $("save").onclick=()=>{const name=clean($("e-name").value)||v.name, portions=stepVal("e-p");
-        closeSheet();lo[id]={...v,name,portions};renderLo();if(db)db.doc(`leftovers/${id}`).update({name,portions});toast("Saved")};
+        closeSheet();lo[id]={...v,name,portions,goodDays:good};renderLo();if(db)db.doc(`leftovers/${id}`).update({name,portions,goodDays:good});toast("Saved")};
       $("e-name").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}});
     },true);
 }
