@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Dinner Plan">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f6f7f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141916" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Sutton Dinner Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: a fridge-door week — top bar, seven night cards in a wrapping grid, then the work-week prep shelf */
+:root{
+  --bg:#f6f7f3; --card:#ffffff; --ink:#1d2420; --muted:#5f6b63; --faint:#9aa59d;
+  --line:#dfe4dc; --basil:#2f6b4f; --basil-soft:#e3efe7; --mustard:#e2a92b; --mustard-soft:#fbf1d9;
+  --danger:#b3412f; --scrim:rgba(20,28,23,.45);
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141916; --card:#1c231f; --ink:#e8eee9; --muted:#a3b0a7; --faint:#6f7c73;
+  --line:#2c3630; --basil:#7cc4a0; --basil-soft:#21352b; --mustard:#f0bf55; --mustard-soft:#3a3020;
+  --danger:#ee8a77; --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141916; --card:#1c231f; --ink:#e8eee9; --muted:#a3b0a7; --faint:#6f7c73;
+  --line:#2c3630; --basil:#7cc4a0; --basil-soft:#21352b; --mustard:#f0bf55; --mustard-soft:#3a3020;
+  --danger:#ee8a77; --scrim:rgba(0,0,0,.6); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2{font-family:var(--display);font-weight:700;margin:0;text-wrap:balance}
+h1{font-size:clamp(24px,4vw,32px);letter-spacing:-.01em}
+h2{font-size:19px}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid var(--basil);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px 20px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.dot.live{background:var(--basil)}
+.nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-weight:500;font-size:14px}
+.btn:hover{border-color:var(--faint)}
+.btn.icon{width:38px;height:38px;padding:0;display:grid;place-items:center;font-size:18px;line-height:1}
+.btn.primary{background:var(--basil);border-color:var(--basil);color:var(--card)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.danger{color:var(--danger)}
+.wklabel{font-family:var(--display);font-weight:500;font-size:17px;min-width:150px;text-align:center;font-variant-numeric:tabular-nums}
+.sechead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.sechead p{margin:0;color:var(--muted);font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px 16px;text-align:left;
+  display:flex;flex-direction:column;gap:10px;min-width:0;width:100%;transition:border-color .15s}
+.card:hover{border-color:var(--faint)}
+.card.today{border-color:var(--mustard);box-shadow:inset 0 0 0 1px var(--mustard)}
+.dhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dname{font-family:var(--display);font-weight:700;font-size:17px}
+.ddate{color:var(--muted);font-size:13px;font-weight:400;margin-left:6px;font-family:var(--body);font-variant-numeric:tabular-nums}
+.chip{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--basil-soft);color:var(--basil);white-space:nowrap}
+.chip.today{background:var(--mustard-soft);color:var(--ink)}
+.chip.out{background:var(--line);color:var(--muted)}
+.main{font-size:17px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600}
+.items{display:flex;flex-direction:column;gap:2px;font-size:14px;color:var(--ink);overflow-wrap:anywhere}
+.items span::before{content:"+ ";color:var(--faint)}
+.note{font-size:13px;color:var(--muted);font-style:italic;overflow-wrap:anywhere}
+.empty{color:var(--faint);font-size:14px;display:flex;align-items:center;gap:6px;padding-block:14px 6px}
+.card.blank{border-style:dashed;background:transparent}
+.prepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-weight:500;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.banner{background:var(--mustard-soft);border-radius:var(--r);padding:12px 16px;font-size:14px}
+/* sheet */
+.scrim{position:fixed;inset:0;background:var(--scrim);display:flex;align-items:center;justify-content:center;z-index:20;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--card);border-radius:18px;width:100%;max-width:460px;max-height:100%;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+.sheet h2{font-size:21px}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.field input{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.field input:focus{border-color:var(--basil);outline:none}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cooks{display:flex;flex-wrap:wrap;gap:6px}
+.cooks button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px}
+.cooks button[aria-pressed="true"]{background:var(--basil);border-color:var(--basil);color:var(--card);font-weight:600}
+.actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:4px}
+.actions .r{display:flex;gap:8px;margin-left:auto}
+.err{color:var(--danger);font-size:13px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);
+  padding:9px 16px;border-radius:999px;font-size:14px;z-index:30}
+@media (max-width:520px){.scrim{align-items:flex-end;padding-bottom:0}.sheet{border-radius:18px 18px 0 0;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.gate{position:fixed;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:var(--bg);padding:24px max(16px,env(safe-area-inset-right,0px)) 24px max(16px,env(safe-area-inset-left,0px))}
+.gate-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.gate-card h2{font-size:22px}.gate-card p{margin:0}.gate-card .small{font-size:14px}.gate-card .muted{color:var(--muted)}
+.gate-card form{display:flex;flex-direction:column;gap:12px}
+.gate-card input{font:inherit;text-align:center;font-size:22px;letter-spacing:.3em;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg);color:var(--ink);width:100%}
+.gate-card .btn{width:100%;padding:12px}
+body.locked{overflow:hidden}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Sutton Dinner Plan</h1>
+      <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Connecting…</span></div>
+    </div>
+    <nav class="nav" aria-label="Week">
+      <button class="btn icon" id="prev" aria-label="Previous week">‹</button>
+      <div class="wklabel" id="wklabel"></div>
+      <button class="btn icon" id="next" aria-label="Next week">›</button>
+      <button class="btn" id="thisWk">This week</button>
+      <button class="btn ghost" id="lockBtn" title="Ask for the passcode again on this device">Lock</button>
+    </nav>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+
+  <section aria-labelledby="dinH">
+    <div class="sechead">
+      <h2 id="dinH">Dinners</h2>
+      <button class="btn ghost" id="copyBtn">Copy last week</button>
+    </div>
+    <div class="grid" id="days"></div>
+  </section>
+
+  <section aria-labelledby="prepH">
+    <div class="sechead">
+      <h2 id="prepH">Work-week meal prep</h2>
+      <p>Breakfast sandwich plus up to two lunches, made ahead for Mon–Fri.</p>
+    </div>
+    <div class="prepgrid" id="prep"></div>
+  </section>
+</div>
+
+<datalist id="dl-main"></datalist><datalist id="dl-side"></datalist><datalist id="dl-bread"></datalist>
+<datalist id="dl-bfast"></datalist><datalist id="dl-lunch"></datalist>
+<div id="modal"></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* Sutton Dinner Plan, phone edition: keeps the plan in the family Google Sheet.
+   Gives the app the same small db interface it uses inside Claude. */
+(function () {
+  const API_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+  const LS = { pass: 'sdp-pass', outbox: 'sdp-outbox', cache: 'sdp-cache' };
+  const get = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const put = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+  let PASS = get(LS.pass) || '';
+
+  /* ---------- talking to the sheet ---------- */
+  async function api(body, ms) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), ms || 30000) : null;
+    let r;
+    try { r = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({}, body, { passcode: PASS })), signal: ctl ? ctl.signal : undefined, redirect: 'follow', cache: 'no-store' }); }
+    catch (e) { const err = new Error('network'); err.code = e && e.name === 'AbortError' ? 'timeout' : 'network'; throw err; }
+    finally { if (timer) clearTimeout(timer); }
+    const text = await r.text();
+    let j; try { j = JSON.parse(text); } catch (e) {
+      const err = new Error('bad_response'); err.code = 'not_json';
+      err.hint = /accounts\.google|ServiceLogin|sign in/i.test(text) ? 'signin' : /authoriz/i.test(text) ? 'auth' : /unable to open|not found|404/i.test(text) ? 'missing' : 'other';
+      throw err;
+    }
+    if (!j.ok) { const err = new Error(j.error || 'error'); err.code = j.error === 'bad_passcode' || j.error === 'locked' ? j.error : 'unavailable'; err.until = j.until; throw err; }
+    return j;
+  }
+
+  /* ---------- local copy + outbox (changes save even with a weak signal) ---------- */
+  let server = {}, store = {}, loaded = false, flushing = false, gen = 0, again = false, syncErr = false;
+  const subs = new Set();
+  let outbox = []; try { outbox = JSON.parse(get(LS.outbox) || '[]') || []; } catch (e) { outbox = []; }
+  const saveOutbox = () => put(LS.outbox, JSON.stringify(outbox));
+  const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
+  const merge = (t, src) => { const o = isObj(t) ? Object.assign({}, t) : {}; for (const k in src) o[k] = isObj(src[k]) && isObj(o[k]) ? merge(o[k], src[k]) : src[k]; return o; };
+  const clone = v => JSON.parse(JSON.stringify(v));
+  const applyOp = (st, o) => { const c = (st[o.c] = st[o.c] || {}); if (o.op === 'delete') delete c[o.id]; else if (o.op === 'update') c[o.id] = merge(c[o.id], o.data); else c[o.id] = clone(o.data); };
+  const rebuild = () => { store = clone(server); outbox.forEach(o => applyOp(store, o)); };
+  const col = c => (store[c] = store[c] || {});
+  const notify = () => subs.forEach(fn => { try { fn(); } catch (e) { console.error(e); } });
+  const snapOf = (c, id) => { const d = col(c)[id]; return { id, exists: d !== undefined, data: () => d, metadata: { fromCache: false, hasPendingWrites: outbox.length > 0 } }; };
+  let flushTimer = null;
+  function flushSoon() { clearTimeout(flushTimer); flushTimer = setTimeout(flush, 250); }
+  async function flush() {
+    if (flushing || !outbox.length) return;
+    flushing = true;
+    try {
+      while (outbox.length) {
+        const n = Math.min(outbox.length, 150), ops = outbox.slice(0, n);
+        await api({ action: 'write', ops });
+        ops.forEach(o => applyOp(server, o));
+        outbox.splice(0, n); saveOutbox(); gen++;
+        put(LS.cache, JSON.stringify(server));
+        notify();
+      }
+      syncErr = false;
+    } catch (e) {
+      syncErr = true; flushing = false;
+      if (e && (e.code === 'bad_passcode' || e.code === 'locked')) { needPass(e); return; }
+      setTimeout(flush, 15000); notify(); return;
+    }
+    flushing = false; notify();
+  }
+  function send(ops) { ops.forEach(o => { outbox.push(o); applyOp(store, o); }); saveOutbox(); notify(); flushSoon(); return Promise.resolve(); }
+  let refreshing = null;
+  async function refresh() {
+    if (!loaded) return;
+    if (refreshing) { again = true; return refreshing; }
+    refreshing = (async () => {
+      const g = gen;
+      const j = await api({ action: 'load' });
+      if (g !== gen) { again = true; return; }
+      server = j.data || {}; put(LS.cache, JSON.stringify(server)); rebuild(); syncErr = false; notify(); flush();
+    })().finally(() => { refreshing = null; if (again) { again = false; setTimeout(() => refresh().catch(() => {}), 300); } });
+    return refreshing;
+  }
+  function docRef(c, id) {
+    return { id, path: c + '/' + id,
+      get: async () => snapOf(c, id),
+      set: data => send([{ op: 'set', c, id, data }]),
+      update: data => send([{ op: 'update', c, id, data }]),
+      delete: () => send([{ op: 'delete', c, id }]),
+      onSnapshot(next) { const fn = () => next(snapOf(c, id)); subs.add(fn); if (loaded) setTimeout(fn, 0); return () => subs.delete(fn); } };
+  }
+  const newId = () => 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  function query(c) {
+    const run = () => { const docs = Object.keys(col(c)).sort().map(id => snapOf(c, id)); return { docs, size: docs.length, empty: !docs.length, docChanges: () => [], metadata: {} }; };
+    return { get: async () => run(), where: () => query(c), orderBy: () => query(c), limit: () => query(c),
+      doc: id => docRef(c, id || newId()), add: async data => { const r = docRef(c, newId()); await r.set(data); return r; },
+      onSnapshot(next) { const fn = () => next(run()); subs.add(fn); if (loaded) setTimeout(fn, 0); return () => subs.delete(fn); } };
+  }
+  const DB = Object.freeze({ doc: p => { const i = p.lastIndexOf('/'); return docRef(p.slice(0, i), p.slice(i + 1)); }, collection: c => query(c) });
+
+  /* ---------- passcode screen ---------- */
+  let resolveReady; const ready = new Promise(r => { resolveReady = r; });
+  const esc = s => String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function overlay(html) {
+    let el = document.getElementById('sdpGate');
+    if (!html) { if (el) el.remove(); document.body.classList.remove('locked'); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'sdpGate'; el.className = 'gate'; document.body.appendChild(el); }
+    el.innerHTML = `<div class="gate-card">${html}</div>`; document.body.classList.add('locked');
+    return el;
+  }
+  function needPass(e) {
+    PASS = ''; put(LS.pass, null);
+    const msg = e && e.code === 'locked' ? `Too many wrong tries. The dinner plan is locked until ${new Date(e.until).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })}.`
+      : e && e.code === 'bad_passcode' ? 'That passcode didn’t match. Try again.' : '';
+    const el = overlay(`<h2>Sutton Dinner Plan</h2><p class="small muted">Enter the family passcode. This phone will remember it.</p>
+      ${msg ? `<p class="err">${esc(msg)}</p>` : ''}
+      <form id="sdpPassForm"><input id="sdpPass" type="password" inputmode="numeric" autocomplete="current-password" placeholder="Passcode" aria-label="Family passcode">
+      <button class="btn primary" type="submit">Unlock</button></form>`);
+    el.querySelector('#sdpPassForm').onsubmit = ev => { ev.preventDefault(); const v = el.querySelector('#sdpPass').value.trim(); if (!v) return; PASS = v; put(LS.pass, v); start(); };
+    setTimeout(() => { const i = el.querySelector('#sdpPass'); if (i) i.focus(); }, 60);
+  }
+  function showProblem(e) {
+    const why = e.code === 'timeout' ? 'The Google Sheet didn’t answer within 30 seconds.'
+      : e.code === 'network' ? 'This phone couldn’t reach Google. Check Wi-Fi or cellular data.'
+      : e.hint === 'signin' ? 'Google is asking for a sign-in, so the script isn’t open to the app.'
+      : e.hint === 'auth' ? 'The Google script still needs permission to run.'
+      : e.hint === 'missing' ? 'Google can’t find the script at this address.'
+      : 'The Google Sheet sent back something the app didn’t expect.';
+    const fix = e.code === 'network' ? ''
+      : e.hint === 'auth' ? '<li>In Apps Script, run <b>setup</b> once and click Allow.</li><li>Then Deploy → Manage deployments → edit → Version: New version → Deploy.</li>'
+      : '<li>In Apps Script: Deploy → Manage deployments → edit (pencil).</li><li>Check <b>Execute as: Me</b> and <b>Who has access: Anyone</b>.</li><li>Set Version to <b>New version</b>, then Deploy.</li>';
+    const el = overlay(`<h2>Can’t open the dinner plan</h2><p class="small">${why}</p>
+      ${fix ? `<ol class="small" style="text-align:left;margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px">${fix}</ol>` : ''}
+      <button class="btn primary" id="sdpRetry">Try again</button>
+      <p class="small muted">Error: ${esc(e.code || 'unknown')}${e.hint ? ' / ' + esc(e.hint) : ''}</p>`);
+    el.querySelector('#sdpRetry').onclick = () => start();
+  }
+  let started = false;
+  async function start() {
+    if (!API_URL || API_URL.indexOf('script.google.com') < 0) {
+      overlay(`<h2>Almost set up</h2><p class="small">This copy isn’t connected to the Google Sheet yet. Paste the Apps Script web app address into <code>API_URL</code> in index.html (see SETUP.md).</p>`); return;
+    }
+    if (!PASS) { needPass(); return; }
+    overlay(`<h2>Sutton Dinner Plan</h2><p class="small muted" id="sdpWait">Opening this week’s plan…</p>`);
+    const slow = setTimeout(() => { const w = document.getElementById('sdpWait'); if (w) w.textContent = 'Still connecting to the Google Sheet. The first open of the day can take up to 30 seconds.'; }, 7000);
+    try {
+      const j = await api({ action: 'load' }, 30000);
+      server = j.data || {}; put(LS.cache, JSON.stringify(server));
+    } catch (e) {
+      clearTimeout(slow);
+      if (e && (e.code === 'bad_passcode' || e.code === 'locked')) { needPass(e); return; }
+      let cached = null; try { cached = JSON.parse(get(LS.cache) || 'null'); } catch (x) {}
+      if (!cached) { showProblem(e); return; }
+      server = cached; syncErr = true; setTimeout(() => refresh().catch(() => {}), 15000);
+    }
+    clearTimeout(slow);
+    rebuild(); loaded = true; notify(); flush();
+    if (!started) {
+      started = true;
+      const poll = () => { if (!document.hidden) refresh().catch(e => { if (e && (e.code === 'bad_passcode' || e.code === 'locked')) needPass(e); else syncErr = true; }); };
+      setInterval(poll, 20000); document.addEventListener('visibilitychange', poll); window.addEventListener('focus', poll);
+    }
+    overlay(null); resolveReady();
+  }
+
+  window.SDP = Object.freeze({
+    pending: () => outbox.length,
+    syncErr: () => syncErr,
+    lock: () => { PASS = ''; put(LS.pass, null); needPass(); }
+  });
+  window.claude = Object.freeze({ use: async name => (name === 'db' ? (await ready, DB) : null) });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
+</script>
+<script>
+
+const DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const COOKS=["Robert","Erica","Mel","Eating out"];
+const DEFAULT_COOK={1:"Mel"};
+const SUGG_KEYS=["main","side","bread","bfast","lunch"];
+let db=null, canWrite=true, unsubs=[];
+let wk=sundayOf(new Date());
+let days={}, prep={}, sugg={main:[],side:[],bread:[],bfast:[],lunch:[]};
+let suggWrite=Promise.resolve();
+
+function sundayOf(d){const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()-x.getDay());return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function key(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function md(d){return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})}
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function clean(s){return String(s??"").trim().slice(0,80)}
+function toast(msg){const t=$("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2200)}
+
+function setStatus(live,txt){$("dot").classList.toggle("live",live);$("statusTxt").textContent=txt}
+
+function render(){
+  const end=addDays(wk,6);
+  $("wklabel").textContent=md(wk)+" – "+md(end);
+  const todayKey=key(new Date());
+  const isThis=key(wk)===key(sundayOf(new Date()));
+  $("thisWk").hidden=isThis;
+  $("copyBtn").hidden=!canWrite;
+  let h="";
+  for(let i=0;i<7;i++){
+    const date=addDays(wk,i), d=days[i]||{}, today=key(date)===todayKey;
+    const sides=[d.side1,d.side2,d.side3].filter(Boolean);
+    const cook=d.cook||"";
+    const has=d.main||sides.length||d.bread||d.note||cook;
+    const cookChip=today?`<span class="chip today">Tonight</span>`:"";
+    const who=cook?`<span class="chip${cook==="Eating out"?" out":""}">${cook==="Eating out"?"Eating out":esc(cook)+" cooks"}</span>`:"";
+    h+=`<button class="card${today?" today":""}${has?"":" blank"}" data-day="${i}" ${canWrite?"":"disabled"} aria-label="${DAYS[i]} ${md(date)}${has?"":", nothing planned"}">
+      <div class="dhead"><span class="dname">${DAYS[i].slice(0,3)}<span class="ddate">${md(date)}</span></span>${cookChip}</div>`;
+    if(!has){h+=`<div class="empty">+ Plan dinner${DEFAULT_COOK[i]?` <span class="chip" style="margin-left:auto">${DEFAULT_COOK[i]}'s night</span>`:""}</div>`}
+    else{
+      if(who)h+=`<div>${who}</div>`;
+      if(d.main)h+=`<div class="main">${esc(d.main)}</div>`;
+      if(sides.length)h+=`<div class="items">${sides.map(s=>`<span>${esc(s)}</span>`).join("")}</div>`;
+      if(d.bread)h+=`<div><div class="lbl">Bread</div><div style="font-size:14px">${esc(d.bread)}</div></div>`;
+      if(d.note)h+=`<div class="note">${esc(d.note)}</div>`;
+    }
+    h+=`</button>`;
+  }
+  $("days").innerHTML=h;
+  const b=prep.bfast||{}, l1=prep.lunch1||{}, l2=prep.lunch2||{};
+  let p=prepCard("bfast","Breakfast sandwich",b.type,[["Bread",b.bread],["How many",b.count]]);
+  p+=prepCard("lunch1","Lunch 1",l1.meal,[["How many",l1.count]]);
+  if(l2.meal||l2.count) p+=prepCard("lunch2","Lunch 2",l2.meal,[["How many",l2.count]]);
+  else if(canWrite) p+=`<button class="card blank" data-prep="lunch2"><div class="dhead"><span class="dname">Lunch 2</span><span class="lbl">Optional</span></div><div class="empty">+ Add a second lunch</div></button>`;
+  $("prep").innerHTML=p;
+}
+function prepCard(id,title,main,rows){
+  const has=main||rows.some(r=>r[1]);
+  let h=`<button class="card${has?"":" blank"}" data-prep="${id}" ${canWrite?"":"disabled"}><div class="dhead"><span class="dname">${title}</span></div>`;
+  if(!has) return h+`<div class="empty">+ Choose what to prep</div></button>`;
+  if(main) h+=`<div class="main">${esc(main)}</div>`;
+  const kv=rows.filter(r=>r[1]);
+  if(kv.length) h+=`<dl class="kv">${kv.map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join("")}</dl>`;
+  return h+`</button>`;
+}
+function renderLists(){
+  const map={main:"dl-main",side:"dl-side",bread:"dl-bread",bfast:"dl-bfast",lunch:"dl-lunch"};
+  for(const k of SUGG_KEYS) $(map[k]).innerHTML=(sugg[k]||[]).map(v=>`<option value="${esc(v)}"></option>`).join("");
+}
+
+/* ---------- editor sheet ---------- */
+let lastFocus=null;
+function openSheet(html,onReady){
+  lastFocus=document.activeElement;
+  $("modal").innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  $("scrim").addEventListener("click",e=>{if(e.target.id==="scrim")closeSheet()});
+  onReady&&onReady();
+  const f=$("modal").querySelector("input");f&&f.focus();
+}
+function closeSheet(){$("modal").innerHTML="";lastFocus&&lastFocus.focus&&lastFocus.focus()}
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("modal").innerHTML)closeSheet()});
+function field(id,label,val,list,ph){return `<div class="field"><label for="${id}">${label}</label><input id="${id}" value="${esc(val)}" ${list?`list="${list}"`:""} placeholder="${esc(ph||"")}" autocomplete="off" maxlength="80"></div>`}
+
+function editDay(i){
+  const date=addDays(wk,i), d=days[i]||{};
+  let cook=d.cook||(Object.keys(d).length?"":(DEFAULT_COOK[i]||""));
+  openSheet(`
+    <div><h2>${DAYS[i]}</h2><div class="sub">${date.toLocaleDateString(undefined,{month:"long",day:"numeric"})}</div></div>
+    <div class="field"><label>Who's cooking</label><div class="cooks" id="cooks">${COOKS.map(c=>`<button type="button" aria-pressed="${c===cook}" data-c="${c}">${c}</button>`).join("")}</div></div>
+    ${field("f-main","Main",d.main,"dl-main","Pot roast")}
+    ${field("f-s1","Side dish 1",d.side1,"dl-side","Mashed potatoes")}
+    ${field("f-s2","Side dish 2",d.side2,"dl-side","")}
+    ${field("f-s3","Side dish 3",d.side3,"dl-side","")}
+    ${field("f-bread","Bread",d.bread,"dl-bread","Dinner rolls")}
+    ${field("f-note","Note",d.note,"","Leftovers, late practice…")}
+    <div class="err" id="err" hidden></div>
+    <div class="actions">
+      <button class="btn ghost danger" id="clr">Clear night</button>
+      <div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div>
+    </div>`,()=>{
+      $("cooks").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+        cook=b.getAttribute("aria-pressed")==="true"?"":b.dataset.c;
+        $("cooks").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x.dataset.c===cook))});
+      $("cancel").onclick=closeSheet;
+      $("clr").onclick=()=>saveDay(i,{}, true);
+      $("save").onclick=()=>{
+        const v={main:clean($("f-main").value),side1:clean($("f-s1").value),side2:clean($("f-s2").value),side3:clean($("f-s3").value),
+          bread:clean($("f-bread").value),note:clean($("f-note").value),cook};
+        saveDay(i,v,false);
+      };
+      $("modal").querySelectorAll("input").forEach(el=>el.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}}));
+    });
+}
+async function saveDay(i,v,clear){
+  const empty=clear||!Object.values(v).some(Boolean);
+  const prevVal=days[i];
+  if(empty) delete days[i]; else days[i]=v;
+  render(); closeSheet();
+  if(!db) return;
+  try{
+    const ref=db.doc(`weeks/${key(wk)}/days/${i}`);
+    if(empty) await ref.delete(); else await ref.set(v);
+    toast(empty?"Night cleared":"Saved");
+    if(!empty) learn({main:[v.main],side:[v.side1,v.side2,v.side3],bread:[v.bread]});
+  }catch(e){if(prevVal) days[i]=prevVal; else delete days[i]; render(); fail(e)}
+}
+
+function editPrep(id){
+  const p=prep[id]||{};
+  const isB=id==="bfast";
+  openSheet(`
+    <div><h2>${isB?"Breakfast sandwich":id==="lunch1"?"Lunch 1":"Lunch 2"}</h2><div class="sub">Prepped for the work week of ${md(addDays(wk,1))}</div></div>
+    ${isB?field("p-main","Sandwich",p.type,"dl-bfast","Sausage, egg and cheese")+field("p-bread","Bread",p.bread,"dl-bread","English muffin")
+         :field("p-main","Meal",p.meal,"dl-lunch","Chicken and rice bowls")}
+    ${field("p-count","How many",p.count,"",isB?"5":"3")}
+    <div class="actions">
+      <button class="btn ghost danger" id="clr">${id==="lunch2"?"Remove lunch 2":"Clear"}</button>
+      <div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="save">Save</button></div>
+    </div>`,()=>{
+      $("p-count").setAttribute("inputmode","numeric");
+      $("cancel").onclick=closeSheet;
+      $("clr").onclick=()=>savePrep(id,{});
+      $("save").onclick=()=>{
+        const v=isB?{type:clean($("p-main").value),bread:clean($("p-bread").value),count:clean($("p-count").value).slice(0,6)}
+                   :{meal:clean($("p-main").value),count:clean($("p-count").value).slice(0,6)};
+        savePrep(id,v);
+      };
+      $("modal").querySelectorAll("input").forEach(el=>el.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();$("save").click()}}));
+    });
+}
+async function savePrep(id,v){
+  const empty=!Object.values(v).some(Boolean), prevVal=prep[id];
+  if(empty) delete prep[id]; else prep[id]=v;
+  render(); closeSheet();
+  if(!db) return;
+  try{
+    const ref=db.doc(`weeks/${key(wk)}/prep/${id}`);
+    if(empty) await ref.delete(); else await ref.set(v);
+    toast(empty?"Cleared":"Saved");
+    if(!empty) learn(id==="bfast"?{bfast:[v.type],bread:[v.bread]}:{lunch:[v.meal]});
+  }catch(e){if(prevVal) prep[id]=prevVal; else delete prep[id]; render(); fail(e)}
+}
+
+function learn(add){
+  let changed=false; const next={};
+  for(const k of SUGG_KEYS){
+    const cur=[...(sugg[k]||[])];
+    for(const raw of (add[k]||[])){const v=clean(raw);if(!v)continue;
+      const i=cur.findIndex(x=>x.toLowerCase()===v.toLowerCase());
+      if(i===0)continue; if(i>0)cur.splice(i,1); cur.unshift(v); changed=true}
+    next[k]=cur.slice(0,80);
+  }
+  if(!changed||!db) return;
+  sugg=next; renderLists();
+  suggWrite=suggWrite.then(()=>db.doc("meta/suggestions").set(next)).catch(()=>{});
+}
+
+function copyLast(){
+  openSheet(`<div><h2>Copy last week?</h2><div class="sub">Fills any empty nights and prep slots this week with what you planned the week of ${md(addDays(wk,-7))}. Nights you've already planned stay as they are.</div></div>
+    <div class="actions"><div class="r"><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="go">Copy</button></div></div>`,()=>{
+      $("cancel").onclick=closeSheet;
+      $("go").onclick=async()=>{
+        closeSheet(); if(!db) return;
+        try{
+          const pk=key(addDays(wk,-7)), ck=key(wk);
+          const [pd,pp]=await Promise.all([db.collection(`weeks/${pk}/days`).get(),db.collection(`weeks/${pk}/prep`).get()]);
+          let n=0;
+          for(const s of pd.docs){ if(!days[s.id]){await db.doc(`weeks/${ck}/days/${s.id}`).set({...s.data()});n++} }
+          for(const s of pp.docs){ if(!prep[s.id]){await db.doc(`weeks/${ck}/prep/${s.id}`).set({...s.data()});n++} }
+          toast(n?`Copied ${n} item${n>1?"s":""}`:"Nothing to copy");
+        }catch(e){fail(e)}
+      };
+      $("go").focus();
+    });
+}
+
+function fail(e){toast("Couldn't save. Check your connection and try again.")}
+function showBanner(t){const b=$("banner");b.textContent=t;b.hidden=false}
+
+/* ---------- data ---------- */
+function subscribeWeek(){
+  unsubs.forEach(u=>u()); unsubs=[]; days={}; prep={}; render();
+  if(!db) return;
+  const k=key(wk);
+  unsubs.push(db.collection(`weeks/${k}/days`).onSnapshot(s=>{days={};s.docs.forEach(d=>days[d.id]=d.data());render()},onErr));
+  unsubs.push(db.collection(`weeks/${k}/prep`).onSnapshot(s=>{prep={};s.docs.forEach(d=>prep[d.id]=d.data());render()},onErr));
+}
+function onErr(){}
+
+$("prev").onclick=()=>{wk=addDays(wk,-7);subscribeWeek()};
+$("next").onclick=()=>{wk=addDays(wk,7);subscribeWeek()};
+$("thisWk").onclick=()=>{wk=sundayOf(new Date());subscribeWeek()};
+$("copyBtn").onclick=copyLast;
+$("days").addEventListener("click",e=>{const c=e.target.closest("[data-day]");if(c&&canWrite)editDay(+c.dataset.day)});
+$("prep").addEventListener("click",e=>{const c=e.target.closest("[data-prep]");if(c&&canWrite)editPrep(c.dataset.prep)});
+
+render();
+setInterval(()=>{const n=window.SDP?SDP.pending():0;if(db)setStatus(!n&&!SDP.syncErr(),n?"Saving…":SDP.syncErr()?"Offline. Changes will save when you reconnect":"Synced with the family")},1500);
+$("lockBtn").onclick=()=>SDP.lock();
+(async()=>{
+  db=await window.claude.use("db");
+  setStatus(true,"Synced with the family");
+  db.doc("meta/suggestions").onSnapshot(s=>{if(s.exists){const d=s.data();sugg={};SUGG_KEYS.forEach(k=>sugg[k]=Array.isArray(d[k])?d[k]:[]);renderLists()}});
+  subscribeWeek();
+})();
+</script>
+</body>
+</html>
