@@ -64,6 +64,10 @@ button:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid v
   display:flex;flex-direction:column;gap:10px;min-width:0;width:100%;transition:border-color .15s}
 .card:hover{border-color:var(--faint)}
 .card.today{border-color:var(--mustard);box-shadow:inset 0 0 0 1px var(--mustard)}
+.card.past{opacity:.5;background:transparent}
+.card.past:hover{opacity:.8}
+.chip.past{background:var(--line);color:var(--muted)}
+.nextwk{border:1px dashed var(--basil);background:var(--basil-soft);color:var(--basil);border-radius:var(--r);padding:12px 16px;font-weight:600;text-align:left;width:100%;margin-top:12px}
 .dhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .dname{font-family:var(--display);font-weight:700;font-size:17px}
 .ddate{color:var(--muted);font-size:13px;font-weight:400;margin-left:6px;font-family:var(--body);font-variant-numeric:tabular-nums}
@@ -392,13 +396,13 @@ function render(){
   $("copyBtn").hidden=!canWrite;
   let h="";
   for(let i=0;i<7;i++){
-    const date=addDays(wk,i), d=days[i]||{}, today=key(date)===todayKey;
+    const date=addDays(wk,i), d=days[i]||{}, today=key(date)===todayKey, past=key(date)<todayKey;
     const sides=[d.side1,d.side2,d.side3].filter(Boolean);
     const cook=d.cook||"";
     const has=d.main||sides.length||d.bread||d.note||cook;
-    const cookChip=today?`<span class="chip today">Tonight</span>`:"";
+    const cookChip=today?`<span class="chip today">Tonight</span>`:past?`<span class="chip past">Past</span>`:"";
     const who=cook?`<span class="chip${cook==="Eating out"?" out":""}">${cook==="Eating out"?"Eating out":esc(cook)+" cooks"}</span>`:"";
-    h+=`<button class="card${today?" today":""}${has?"":" blank"}" data-day="${i}" ${canWrite?"":"disabled"} aria-label="${DAYS[i]} ${md(date)}${has?"":", nothing planned"}">
+    h+=`<button class="card${today?" today":""}${past?" past":""}${has?"":" blank"}" data-day="${i}" ${canWrite?"":"disabled"} aria-label="${past?"Past: ":""}${DAYS[i]} ${md(date)}${has?"":", nothing planned"}">
       <div class="dhead"><span class="dname">${DAYS[i].slice(0,3)}<span class="ddate">${md(date)}</span></span>${cookChip}</div>`;
     if(!has){h+=`<div class="empty">+ Plan dinner${DEFAULT_COOK[i]?` <span class="chip" style="margin-left:auto">${DEFAULT_COOK[i]}'s night</span>`:""}</div>`}
     else{
@@ -410,6 +414,8 @@ function render(){
     }
     h+=`</button>`;
   }
+  /* Thursday on, this week's first card is last Sunday; point to next week so the coming Sunday gets planned there */
+  if(isThis&&new Date().getDay()>=4){const ns=addDays(wk,7);h+=`<button class="nextwk" id="goNext">Planning Sunday ${md(ns)} or later? It's on next week's plan ›</button>`}
   $("days").innerHTML=h;
   const b=prep.bfast||{}, l1=prep.lunch1||{}, l2=prep.lunch2||{};
   let p=prepCard("bfast","Breakfast sandwich",b.type,[["Bread",b.bread],["How many",b.count]]);
@@ -756,7 +762,7 @@ $("prev").onclick=()=>{wk=addDays(wk,-7);subscribeWeek()};
 $("next").onclick=()=>{wk=addDays(wk,7);subscribeWeek()};
 $("thisWk").onclick=()=>{wk=sundayOf(new Date());subscribeWeek()};
 $("copyBtn").onclick=copyLast;
-$("days").addEventListener("click",e=>{const c=e.target.closest("[data-day]");if(c&&canWrite)editDay(+c.dataset.day)});
+$("days").addEventListener("click",e=>{if(e.target.closest("#goNext")){wk=addDays(wk,7);subscribeWeek();return}const c=e.target.closest("[data-day]");if(c&&canWrite)editDay(+c.dataset.day)});
 $("prep").addEventListener("click",e=>{const c=e.target.closest("[data-prep]");if(c&&canWrite)editPrep(c.dataset.prep)});
 
 render();renderLo();
