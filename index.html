@@ -17,6 +17,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<!-- Sutton Design System: theme switch + shared tokens -->
+<script src="https://robbmx07.github.io/sutton-hp/design/sutton-theme.js"></script>
+<link rel="stylesheet" href="https://robbmx07.github.io/sutton-hp/design/sutton.css">
 <style>
 /* Layout: a fridge-door week — top bar, seven night cards in a wrapping grid, then the work-week prep shelf */
 :root{
@@ -146,12 +149,38 @@ body.locked{overflow:hidden}
 .steprow{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .steprow span{font-size:13px;font-weight:600;color:var(--muted)}
 </style>
+<style id="sutton-map">
+/* Sutton Design System mapping for Dinner Plan.
+   Shared: background, cards, text, lines, status red, buttons, cards, header.
+   Kept on purpose: basil accent, mustard (tonight + leftovers), Main/Sides/Bread layout.
+   Fallback values after each comma keep the app readable if sutton.css can't load. */
+html:root[data-theme="dark"]{
+  --bg:var(--s-bg,#141916); --card:var(--s-card,#1c231f); --ink:var(--s-ink,#e8eee9); --muted:var(--s-muted,#a3b0a7);
+  --faint:var(--s-faint,#6f7c73); --line:var(--s-line,#2c3630); --danger:var(--s-alert,#ee8a77); --scrim:var(--s-scrim,rgba(0,0,0,.6));
+  --basil:#7cc4a0; --basil-soft:#21352b; --mustard:#f0bf55; --mustard-soft:#3a3020; --s-accent:var(--basil)}
+html:root[data-theme="light"]{
+  --bg:var(--s-bg,#f6f7f3); --card:var(--s-card,#ffffff); --ink:var(--s-ink,#1d2420); --muted:var(--s-muted,#5f6b63);
+  --faint:var(--s-faint,#9aa59d); --line:var(--s-line,#dfe4dc); --danger:var(--s-alert,#b3412f); --scrim:var(--s-scrim,rgba(20,28,23,.45));
+  --basil:#2f6b4f; --basil-soft:#e3efe7; --mustard:#e2a92b; --mustard-soft:#fbf1d9; --s-accent:var(--basil)}
+:root{--r:var(--s-r,14px)}
+/* 44px tap targets, pill shape */
+.btn{min-height:var(--s-tap,44px);padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+[hidden]{display:none!important}
+.btn.icon{width:var(--s-tap,44px);height:var(--s-tap,44px);min-height:0}
+.btn.primary{color:var(--bg)}
+/* cards: soft shadow in light, lighter surface in dark */
+.card,.locard,.prepcard,.gate-card{box-shadow:var(--s-shadow,none)}
+.card.today{box-shadow:inset 0 0 0 1px var(--mustard),var(--s-shadow,none)}
+.top .nav{flex-wrap:wrap}
+</style>
+
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <h1>Sutton Dinner Plan</h1>
+      <span class="s-kicker">Sutton</span>
+      <h1>Dinner Plan</h1>
       <div class="status"><span class="dot" id="dot"></span><span id="statusTxt">Connecting…</span></div>
     </div>
     <nav class="nav" aria-label="Week">
@@ -159,6 +188,7 @@ body.locked{overflow:hidden}
       <div class="wklabel" id="wklabel"></div>
       <button class="btn icon" id="next" aria-label="Next week">›</button>
       <button class="btn" id="thisWk">This week</button>
+      <span data-sutton-theme></span>
       <button class="btn ghost" id="lockBtn" title="Ask for the passcode again on this device">Lock</button>
     </nav>
   </header>
